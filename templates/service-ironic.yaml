@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ironic
+  {{- with .Values.services.ironic.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ports:
+  - name: httpd
+    port: {{ .Values.services.ironic.ironicHTTPPort }}
+    protocol: TCP
+    targetPort: {{ .Values.services.ironic.ironicHTTPPort }}
+  - name: inspector
+    port: {{ .Values.services.ironic.ironicInspectorPort }}
+    protocol: TCP
+    targetPort: {{ .Values.services.ironic.ironicInspectorPort }}
+  - name: api
+    port: {{ .Values.services.ironic.ironicAPIPort }}
+    protocol: TCP
+    targetPort: {{ .Values.services.ironic.ironicAPIPort }}
+  selector:
+    name: ironic
+  type: {{ .Values.services.ironic.type }}
+  {{- if eq .Values.services.ironic.type "LoadBalancer" }}
+  externalIPs: 
+  {{- with .Values.services.ironic.externalIPs }}
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- end }}
+  {{- end }}

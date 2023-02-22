@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager
+    webhook: metal3-io-v1alpha1-baremetalhost
+    {{- include "metal3.labels" . | nindent 4 }}
+  name: baremetal-operator-controller-manager
+spec:
+  minReadySeconds: 10
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+        webhook: metal3-io-v1alpha1-baremetalhost
+    spec:
+      containers:
+      - args:
+        - --metrics-addr=127.0.0.1:8085
+        - --enable-leader-election
+        command:
+        - /baremetal-operator
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        envFrom:
+        - configMapRef:
+            name: baremetal-operator-ironic
+        image: {{ .Values.images.baremetalOperator.repository }}:{{ .Values.images.baremetalOperator.tag }}
+        imagePullPolicy: {{ .Values.images.baremetalOperator.pullPolicy }}
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /healthz
+            port: 9440
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /readyz
+            port: 9440
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 2
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+        {{- if .Values.auth.basicAuthEnabled }}
+        - name: ironic-credentials
+          mountPath: "/opt/metal3/auth/ironic"
+          readOnly: true
+        - name: ironic-inspector-credentials
+          mountPath: "/opt/metal3/auth/ironic-inspector"
+          readOnly: true
+        {{- end }}
+        {{- if .Values.auth.tlsEnabled }}
+        - name: cacert
+          mountPath: "/opt/metal3/certs/ca"
+          readOnly: true
+        {{- end }}
+      - args:
+        - --secure-listen-address=0.0.0.0:8443
+        - --upstream=http://127.0.0.1:8085/
+        - --logtostderr=true
+        - --v=10
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 8443
+          name: https
+      serviceAccountName: {{ include "metal3.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: bmo-webhook-server-cert
+      {{- if .Values.auth.basicAuthEnabled }}
+      - name: ironic-credentials
+        secret:
+          secretName: ironic-credentials
+      - name: ironic-inspector-credentials
+        secret:
+          secretName: ironic-inspector-credentials
+      {{- end }}
+      {{- if .Values.auth.tlsEnabled }}
+      - name: cacert
+        secret:
+          secretName: ironic-cacert
+      {{- end }}
+    {{- with .Values.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+    affinity:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}

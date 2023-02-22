@@ -1,0 +1,362 @@
+# Default values for metal3.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## @section metal3 values.yaml
+
+## @param global.storageClass Global storage class for dynamic provisioning
+##
+global:
+  storageClass: ""
+
+# replicaCount: 1
+
+## Metal3 images
+images:
+  baremetalOperator:
+    ## @param images.baremetalOperator.repository baremetal-operator image repository
+    ## e.g. quay.io/metal3-io/baremetal-operator
+    ##
+    repository: quay.io/metal3-io/baremetal-operator
+    ## @param images.baremetalOperator.pullPolicy baremetal-operator image pull policy
+    ##
+    pullPolicy: IfNotPresent
+    ## @param images.baremetalOperator.tag baremetal-operator image tag
+    ## Overrides the image tag whose default is the chart appVersion.
+    ##
+    tag: "v0.1.1"
+  ironic:
+    ## @param images.ironic.repository ironic image repository
+    ## e.g. quay.io/metal3-io/ironic
+    ##
+    repository: quay.io/metal3-io/ironic
+    ## @param images.ironic.pullPolicy ironic image pull policy
+    ##
+    pullPolicy: IfNotPresent
+    ## @param images.ironic.tag ironic image tag
+    ## Overrides the image tag whose default is the chart appVersion.
+    ##
+    tag: "capm3-v1.2.0"
+  ironicIPADownloader:
+    ## @param images.ironicIPADownloader.repository ironic-ipa-downloader image repository
+    ## [IPA DIB image] e.g. quay.io/metal3-io/ironic-ipa-downloader
+    ## [IPA tinyIPA image] e.g. fedcicchiello/ironic-ipa-downloader
+    ##
+    repository: quay.io/metal3-io/ironic-ipa-downloader
+    ## @param images.ironicIPADownloader.pullPolicy ironic-ipa-downloader image pull policy
+    ##
+    pullPolicy: IfNotPresent
+    ## @param images.ironicIPADownloader.tag ironic-ipa-downloader image tag
+    ## [IPA DIB image] e.g. latest
+    ## [IPA tinyIPA image] e.g. tinyipa
+    ## Overrides the image tag whose default is the chart appVersion.
+    ##
+    tag: "latest"
+
+persistence:
+  ironic:
+    ## @param persistence.ironic.storageClass storageClass for the ironic shared volume
+    ##
+    storageClass: ""
+    ## @param persistence.ironic.size size of the ironic shared volume
+    ##
+    size: "1Gi"
+    ## @param persistence.ironic.accessMode accessMode of the ironic shared volume PVC
+    ##
+    accessMode: "ReadWriteMany"
+
+auth:
+  ## @param auth.basicAuthEnabled ironic services basic authentication enabled
+  ##
+  basicAuthEnabled: true
+  ## @param auth.ironicUsername ironic API service username
+  ##
+  ironicUsername: "ironic"
+  ## @param auth.ironicPassword ironic API service password
+  ##
+  ironicPassword: "changeme"
+  ## @param auth.ironicInspectorUsername ironic inspector service username
+  ##
+  ironicInspectorUsername: "ironic"
+  ## @param auth.ironicInspectorPassword ironic inspector service password
+  ##
+  ironicInspectorPassword: "changeme"
+  ## @param auth.tlsEnabled ironic services TLS enabled
+  ##
+  tlsEnabled: true
+
+## @param ironicIPADownloaderBaseURI URI to download from the file `ironic-python-agent.tar`. If empty the default URI defined in the ironic-ipa-downloader image will be used
+##
+ironicIPADownloaderBaseURI: ""
+
+## @param ironicIPAExtraHardwareCollectorEnabled ironic-python-agent `extra-hardware` collector enabled. Important: must be set to false if tinyIPA images are used
+## more info at https://docs.openstack.org/ironic-python-agent/latest/admin/how_it_works.html#inspection-data
+##
+ironicIPAExtraHardwareCollectorEnabled: false
+
+# imagePullSecrets: []
+# nameOverride: ""
+# fullnameOverride: ""
+
+## @param httpProxy URL of the HTTP proxy
+##
+httpProxy: ""
+## @param httpsProxy URL of the HTTPS proxy
+##
+httpsProxy: ""
+## @param noProxy configuration of the noProxy
+##
+noProxy: ""
+
+services:
+  ironic:
+    ## @param services.ironic.type type of the ironic service
+    ##
+    type: LoadBalancer
+    ## @param services.ironic.externalIPs ExternalIPs statically assigned to the ironic service
+    ##
+    externalIPs: ["{{ .Values.services.ironic.ironicIP }}"]
+    ## @param services.ironic.ironicIP IP of the ironic service
+    ## Must be reachable from the baremetal hosts to be managed
+    ##
+    ironicIP: ""
+    ## @param services.ironic.ironicAPIPort port of the ironic-api service
+    ##
+    ironicAPIPort: 6385
+    ## @param services.ironic.ironicInspectorPort port of the ironic-inspector service
+    ##
+    ironicInspectorPort: 5050
+    ## @param services.ironic.ironicHTTPPort port of the ironic-http service
+    ##
+    ironicHTTPPort: 6180
+    ## @param services.ironic.annotations annotations of the ironic's service (tip: add `metallb.universe.tf/address-pool: <ironic-pool-name>` with metallb to select the address-pool for ironic)
+    annotations: {}
+
+mariadb:
+  ## @param mariadb.architecture MariaDB architecture (`standalone` or `replication`)
+  ##
+  architecture: replication
+
+  ## MariaDB Authentication parameters
+  ##
+  auth:
+    ## @param mariadb.auth.rootPassword Password for the `root` user. Ignored if existing secret is provided, otherwise automatically generated if empty.
+    rootPassword: ""
+      
+    ## @param mariadb.auth.ironicPassword Password for the `ironic` user
+    ironicPassword: "changeme"
+  
+  ## @extra mariadb.initdbScripts Dictionary of initdb scripts
+  ## Specify dictionary of scripts to be run at first boot
+  ## Example:
+  ## initdbScripts:
+  ##   my_init_script.sh: |
+  ##      #!/bin/bash
+  ##      echo "Do something."
+  ##
+  initdbScripts:
+    ## @param mariadb.initdbScripts.primary.sql [string] SQL initialization script to be executed on the primary
+    ##
+    primary.sql: |
+      CREATE USER 'ironic'@'%' identified by '{{ .Values.auth.ironicPassword }}' ;
+      GRANT ALL on *.* TO 'ironic'@'%' WITH GRANT OPTION ;
+      DROP DATABASE IF EXISTS test ;
+      CREATE DATABASE IF NOT EXISTS ironic ;
+      CREATE DATABASE IF NOT EXISTS ironic_inspector ;
+
+  ## Mariadb Primary parameters
+  ##
+  primary:
+    ## @param mariadb.primary.configuration [string] MariaDB Primary configuration to be injected as ConfigMap
+    ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
+    ##
+    configuration: |-
+      [mysqld]
+      skip-name-resolve
+      explicit_defaults_for_timestamp
+      basedir=/opt/bitnami/mariadb
+      plugin_dir=/opt/bitnami/mariadb/plugin
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      tmpdir=/opt/bitnami/mariadb/tmp
+      max_allowed_packet=16M
+      bind-address=*
+      pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+      log-error=/opt/bitnami/mariadb/logs/mysqld.log
+      character-set-server=UTF8
+      collation-server=utf8_general_ci
+      slow_query_log=0
+      slow_query_log_file=/opt/bitnami/mariadb/logs/mysqld.log
+      long_query_time=10.0
+      max_connections=64
+      max_heap_table_size=1M
+      innodb_buffer_pool_size=5M
+      innodb_log_buffer_size=512K
+
+      [client]
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      default-character-set=UTF8
+      plugin_dir=/opt/bitnami/mariadb/plugin
+
+      [manager]
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+    
+    ## @param mariadb.primary.name Name of the primary database (eg primary, master, leader, ...)
+    ##
+    name: primary
+
+    ## Enable persistence using Persistent Volume Claims
+    ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
+    ##
+    persistence:
+      ## @param mariadb.primary.persistence.enabled Enable persistence on MariaDB primary replicas using a `PersistentVolumeClaim`. If false, use emptyDir
+      ##
+      enabled: true
+      ## @param mariadb.primary.persistence.size MariaDB primary persistent volume size
+      ##
+      size: 1Gi
+      ## @param mariadb.primary.persistence.storageClass MariaDB primary persistent volume storage Class
+      ##
+      storageClass: ""
+
+    ## MariaDB Primary Service parameters
+    ##
+    service:
+      ## @param mariadb.primary.service.type MariaDB Primary Kubernetes service type
+      ##
+      type: ClusterIP
+      ports:
+        ## @param mariadb.primary.service.ports.mysql MariaDB Primary Kubernetes service port for MariaDB
+        ##
+        mysql: 3306
+      ## @param mariadb.primary.service.clusterIP MariaDB Primary Kubernetes service clusterIP IP
+      ##
+      clusterIP: None
+  
+  ## Mariadb Secondary parameters
+  ##
+  secondary:
+    ## @param mariadb.secondary.configuration [string] MariaDB Secondary configuration to be injected as ConfigMap
+    ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
+    ##
+    configuration: |-
+      [mysqld]
+      skip-name-resolve
+      explicit_defaults_for_timestamp
+      basedir=/opt/bitnami/mariadb
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      tmpdir=/opt/bitnami/mariadb/tmp
+      max_allowed_packet=16M
+      bind-address=0.0.0.0
+      pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+      log-error=/opt/bitnami/mariadb/logs/mysqld.log
+      character-set-server=UTF8
+      collation-server=utf8_general_ci
+      slow_query_log=0
+      slow_query_log_file=/opt/bitnami/mariadb/logs/mysqld.log
+      long_query_time=10.0
+      max_connections=64
+      max_heap_table_size=1M
+      innodb_buffer_pool_size=5M
+      innodb_log_buffer_size=512K
+
+      [client]
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      default-character-set=UTF8
+
+      [manager]
+      port=3306
+      socket=/opt/bitnami/mariadb/tmp/mysql.sock
+      pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+    
+    ## @param mariadb.secondary.name Name of the secondary database (eg secondary, slave, ...)
+    ##
+    name: secondary
+
+    ## Enable persistence using Persistent Volume Claims
+    ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
+    ##
+    persistence:
+      ## @param mariadb.secondary.persistence.size MariaDB primary persistent volume size
+      ##
+      size: 1Gi
+      ## @param mariadb.secondary.persistence.storageClass MariaDB primary persistent volume storage Class
+      ##
+      storageClass: ""
+    
+    ## @param mariadb.secondary.replicaCount Number of MariaDB secondary replicas
+    ##
+    replicaCount: 1
+
+    ## MariaDB Secondary Service parameters
+    ##
+    service:
+      ## @param mariadb.secondary.service.type MariaDB secondary Kubernetes service type
+      ##
+      type: ClusterIP
+      ports:
+        ## @param mariadb.secondary.service.ports.mysql MariaDB secondary Kubernetes service port for MariaDB
+        ##
+        mysql: 3306
+      ## @param mariadb.secondary.service.clusterIP MariaDB secondary Kubernetes service clusterIP IP
+      clusterIP: None
+
+## Configuration of the serviceAccount for the baremetal-operator-controller-manager
+##
+serviceAccount:
+  ## @param serviceAccount.create Specifies whether a service account should be created
+  create: true
+  ## @param serviceAccount.annotations Annotations to add to the service account
+  annotations: {}
+  ## @param serviceAccount.name The name of the service account to use.
+  ## If not set and create is true, a name is generated using the fullname template
+  name: "baremetal-operator-controller-manager"
+
+# podAnnotations: {}
+
+# podSecurityContext: {}
+#   # fsGroup: 2000
+
+# securityContext: {}
+#   # capabilities:
+#   #   drop:
+#   #   - ALL
+#   # readOnlyRootFilesystem: true
+#   # runAsNonRoot: true
+#   # runAsUser: 1000
+
+# resources: {}
+#   # We usually recommend not to specify default resources and to leave this as a conscious
+#   # choice for the user. This also increases chances charts run on environments with little
+#   # resources, such as Minikube. If you do want to specify resources, uncomment the following
+#   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+#   # limits:
+#   #   cpu: 100m
+#   #   memory: 128Mi
+#   # requests:
+#   #   cpu: 100m
+#   #   memory: 128Mi
+
+# autoscaling:
+#   enabled: false
+#   minReplicas: 1
+#   maxReplicas: 100
+#   targetCPUUtilizationPercentage: 80
+#   # targetMemoryUtilizationPercentage: 80
+
+## @param nodeSelector nodeSelector for metal3 Pods
+##
+nodeSelector: {}
+
+## @param tolerations tolerations for metal3 Pods
+##
+tolerations: []
+
+## @param affinity affinity for metal3 Pods
+##
+affinity: {}

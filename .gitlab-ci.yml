@@ -1,0 +1,32 @@
+image: curlimages/curl:latest
+
+stages:
+  - publish
+
+variables:
+  PLATFORM: linux
+  ARCH: amd64
+  HELM_VERSION: v3.10.0
+  YQ_VERSION: v4.27.5
+
+publish:
+  stage: publish
+  before_script:
+  - 'cd /home/curl_user'
+  - 'curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-${PLATFORM}-${ARCH}.tar.gz'
+  - 'curl -fsSL -o yq.tar.gz https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_${PLATFORM}_${ARCH}.tar.gz'
+  - 'tar -zxvf helm.tar.gz'
+  - 'tar -zxvf yq.tar.gz'
+  - 'chmod +x ${PLATFORM}-${ARCH}/helm'
+  - 'mkdir yq && mv yq_${PLATFORM}_${ARCH} yq/yq'
+  - 'chmod +x yq/yq'
+  - 'export env PATH=${PATH}:$(pwd)/${PLATFORM}-${ARCH}:$(pwd)/yq'
+  script:
+  - 'cd ${CI_PROJECT_DIR}'
+  - 'helm repo add bitnami https://charts.bitnami.com/bitnami'
+  - 'helm dep build .'
+  - 'helm package .'
+  - 'CHART_NAME=$(yq .name ./Chart.yaml)'
+  - 'CHART_VERSION=$(yq .version ./Chart.yaml)'
+  - 'if [[ $CI_COMMIT_BRANCH == "main" ]]; then CHANNEL=stable; else CHANNEL=devel; fi'
+  - 'curl --request POST --user $CI_DEPLOY_USER:$CI_DEPLOY_PASSWORD --form "chart=@${CHART_NAME}-${CHART_VERSION}.tgz" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/helm/api/${CHANNEL}/charts"'
