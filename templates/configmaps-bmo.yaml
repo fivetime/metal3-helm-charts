@@ -1,0 +1,33 @@
+apiVersion: v1
+data:
+  DEPLOY_KERNEL_URL: http://{{ .Values.services.ironic.ironicIP }}:{{ .Values.services.ironic.ironicHTTPPort }}/images/ironic-python-agent.kernel
+  DEPLOY_RAMDISK_URL: http://{{ .Values.services.ironic.ironicIP }}:{{ .Values.services.ironic.ironicHTTPPort }}/images/ironic-python-agent.initramfs
+  HTTP_PORT: {{ .Values.services.ironic.ironicHTTPPort | quote }}
+  INSPECTOR_REVERSE_PROXY_SETUP: "false"
+  IRONIC_ENDPOINT: http{{ if .Values.auth.tlsEnabled }}s{{ end }}://{{ .Values.services.ironic.ironicIP }}:{{ .Values.services.ironic.ironicAPIPort }}/v1/
+  IRONIC_FAST_TRACK: "true"
+  IRONIC_INSPECTOR_ENDPOINT: http{{ if .Values.auth.tlsEnabled }}s{{ end }}://{{ .Values.services.ironic.ironicIP }}:{{ .Values.services.ironic.ironicInspectorPort }}/v1/
+  IRONIC_KERNEL_PARAMS: console=ttyS0
+  IRONIC_USE_MARIADB: "true"
+  RESTART_CONTAINER_CERTIFICATE_UPDATED: "false"
+kind: ConfigMap
+metadata:
+  name: baremetal-operator-ironic
+---
+apiVersion: v1
+data:
+  controller_manager_config.yaml: |
+    apiVersion: controller-runtime.sigs.k8s.io/v1alpha1
+    kind: ControllerManagerConfig
+    health:
+      healthProbeBindAddress: :9440
+    metrics:
+      bindAddress: 127.0.0.1:8085
+    webhook:
+      port: 9443
+    leaderElection:
+      leaderElect: true
+      resourceName: a9498140.metal3.io
+kind: ConfigMap
+metadata:
+  name: baremetal-operator-manager-config

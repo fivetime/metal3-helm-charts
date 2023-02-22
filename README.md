@@ -1,92 +1,194 @@
-# metal3
+# Metal3 Helm chart
 
+This chart is meant to manage the deployment of metal3 in a L3-Virtual Media setup through Helm.
 
+## Prerequisites
+There are two dependencies that are not managed through the metal3 chart because are related to applications that have a cluster-wide scope: `cert-manager` and a LoadBalancer Service provider such as `metallb` or `kube-vip`.
 
-## Getting started
+### cert-manager
+In order to successfully deploy metal3 the cluster must have already installed the `cert-manager`.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+You can install it through `helm` with:
+```bash
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.9.1 \
+  --set installCRDs=true
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3.git
-git branch -M main
-git push -uf origin main
+, or via `kubectl` with:
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
 ```
 
-## Integrate with your tools
+### metallb
+The Ironic services must be exposed in order to be reachable from the baremetal servers to be managed.
+A way to do that is using `metallb` in `layer2` mode.
 
-- [ ] [Set up project integrations](https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3/-/settings/integrations)
+You can install it through `helm` with:
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm install \
+  metallb metallb/metallb \
+  --namespace metallb-system \
+  --create-namespace
+```
+, or via `kubectl` with:
+```bash
+kubectl create namespace metallb-system
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.5/config/manifests/metallb-native.yaml -n metallb-system
+```
 
-## Collaborate with your team
+Then you must configure the static IP address to be assigned to the Ironic svc.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+In old versions of metallb, you can do it through a configMap:
+```bash
+cat <<EOF > metallb-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - <IRONIC_SVC_IP>-<IRONIC_SVC_IP>
+EOF
+kubectl apply -f metallb-config.yaml
+```
+Ensure that `IRONIC_SVC_IP` is the same IP configured in the `values.yaml file` in field `services.ironic.ironicIP`.
 
-## Test and Deploy
+In the newer versions of metallb you can provide the IP pool configuration with:
+```bash
+cat <<EOF > metallb-config.yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: ironic-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - <IRONIC_SVC_IP>-<IRONIC_SVC_IP>
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: ironic
+  namespace: metallb-system
+EOF
+kubectl apply -f metallb-config.yaml
+```
 
-Use the built-in continuous integration in GitLab.
+### kube-vip
+Refer to the [official kube-vip documentation](https://kube-vip.io/docs/installation/) to install and configure it to serve LoadBalancer services.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+It does not need any CRD to be configured to expose the Ironic services, it just exposes the chosen static IP configured in the `values.yaml` file in the `services.ironic.loadBalancerIP` field.
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Add the Helm chart repository:
+```bash
+helm repo add --username <username> --password <access_token> sylva-metal3 https://gitlab.com/api/v4/projects/43292746/packages/helm/stable
+```
+, then prepare your `values.yaml` file with the configuration of metal3 (in the next section there is the complete description of all the configurable parameters) and finally issue:
+```bash
+helm install metal3 sylva/metal3 -n metal3-system --values values.yaml --create-namespace
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Parameters
+Below there is the full list of configuration parameters for the metal3 helm chart.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+In most cases you should only need to provide `global.storageClass`, `services.ironic.ironicIP`, `httpProxy` and `httpsProxy`, and keep the defaults for other variables.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+By default the chart deploys the `DIB ironic-python-agent images`, if you want to deploy `tinyIPA images` instead you can customize `images.ironicIPADownloader.repository` to `fedcicchiello/ironic-ipa-downloader` and `images.ironicIPADownloader.tag` to `tinyipa`.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### metal3 values.yaml
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+| Name                                         | Description                                                                                                                               | Value                                     |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `global.storageClass`                        | Global storage class for dynamic provisioning                                                                                             | `""`                                      |
+| `images.baremetalOperator.repository`        | baremetal-operator image repository                                                                                                       | `quay.io/metal3-io/baremetal-operator`    |
+| `images.baremetalOperator.pullPolicy`        | baremetal-operator image pull policy                                                                                                      | `IfNotPresent`                            |
+| `images.baremetalOperator.tag`               | baremetal-operator image tag                                                                                                              | `v0.1.1`                            |
+| `images.ironic.repository`                   | ironic image repository                                                                                                                   | `quay.io/metal3-io/ironic`                |
+| `images.ironic.pullPolicy`                   | ironic image pull policy                                                                                                                  | `IfNotPresent`                            |
+| `images.ironic.tag`                          | ironic image tag                                                                                                                          | `capm3-v1.2.0`                            |
+| `images.ironicIPADownloader.repository`      | ironic-ipa-downloader image repository                                                                                                    | `quay.io/metal3-io/ironic-ipa-downloader` |
+| `images.ironicIPADownloader.pullPolicy`      | ironic-ipa-downloader image pull policy                                                                                                   | `IfNotPresent`                            |
+| `images.ironicIPADownloader.tag`             | ironic-ipa-downloader image tag                                                                                                           | `latest`                                  |
+| `persistence.ironic.storageClass`            | storageClass for the ironic shared volume                                                                                                 | `""`                                      |
+| `persistence.ironic.size`                    | size of the ironic shared volume                                                                                                          | `1Gi`                                   |
+| `persistence.ironic.accessMode`              | accessMode of the ironic shared volume PVC                                                                                                | `ReadWriteMany`                           |
+| `auth.basicAuthEnabled`                      | ironic services basic authentication enabled                                                                                              | `true`                                    |
+| `auth.ironicUsername`                        | ironic API service username                                                                                                               | `ironic`                                  |
+| `auth.ironicPassword`                        | ironic API service password                                                                                                               | `changeme`                                |
+| `auth.ironicInspectorUsername`               | ironic inspector service username                                                                                                         | `ironic`                                  |
+| `auth.ironicInspectorPassword`               | ironic inspector service password                                                                                                         | `changeme`                                |
+| `auth.tlsEnabled`                            | ironic services TLS enabled                                                                                                          | `true`                                |
+| `ironicIPADownloaderBaseURI`                 | URI to download from the file `ironic-python-agent.tar`. If empty the default URI defined in the ironic-ipa-downloader image will be used | `""`                                      |
+| `ironicIPAExtraHardwareCollectorEnabled`     | ironic-python-agent `extra-hardware` collector enabled. Important: must be set to false if tinyIPA images are used                        | `false`                                   |
+| `httpProxy`                                  | URL of the HTTP proxy                                                                                                                     | `""`                                      |
+| `httpsProxy`                                 | URL of the HTTPS proxy                                                                                                                    | `""`                                      |
+| `noProxy`                                    | configuration of the noProxy                                                                                                              | `""`                                      |
+| `services.ironic.type`                       | type of the ironic service                                                                                                                | `LoadBalancer`                            |
+| `services.ironic.externalIPs`                | ExternalIPs statically assigned to the ironic service                                                                                                           | `["{{ .Values.services.ironic.ironicIP }}"]`                            |
+| `services.ironic.ironicIP`                   | IP of the ironic service                                                                                                                  | `""`                                      |
+| `services.ironic.ironicAPIPort`              | port of the ironic-api service                                                                                                            | `6385`                                    |
+| `services.ironic.ironicInspectorPort`        | port of the ironic-inspector service                                                                                                      | `5050`                                    |
+| `services.ironic.ironicHTTPPort`             | port of the ironic-http service                                                                                                           | `6180`                                    |
+| `services.ironic.annotations`                | annotations of the ironic's service (tip: add `metallb.universe.tf/address-pool: <ironic-pool-name>` with metallb to select the address-pool for ironic)                                                                          | `{}`                                    |
+| `mariadb.architecture`                       | MariaDB architecture (`standalone` or `replication`)                                                                                      | `replication`                             |
+| `mariadb.auth.rootPassword`                  | Password for the `root` user. Ignored if existing secret is provided, otherwise automatically generated if empty.                                                                                              | `""`                                      |
+| `mariadb.auth.ironicPassword`                | Password for the `ironic` user                                                                                                            | `changeme`                                |
+| `mariadb.initdbScripts`                      | Dictionary of initdb scripts                                                                                                              |                                           |
+| `mariadb.initdbScripts.primary.sql`          | SQL initialization script to be executed on the primary                                                                                   | `""`                                      |
+| `mariadb.primary.configuration`              | MariaDB Primary configuration to be injected as ConfigMap                                                                                 | `""`                                      |
+| `mariadb.primary.name`                       | Name of the primary database (eg primary, master, leader, ...)                                                                            | `primary`                                 |
+| `mariadb.primary.persistence.enabled`        | Enable persistence on MariaDB primary replicas using a `PersistentVolumeClaim`. If false, use emptyDir                                    | `true`                                    |
+| `mariadb.primary.persistence.size`           | MariaDB primary persistent volume size                                                                                                    | `1Gi`                                   |
+| `mariadb.primary.persistence.storageClass`   | MariaDB primary persistent volume storage Class                                                                                           | `""`                                      |
+| `mariadb.primary.service.type`               | MariaDB Primary Kubernetes service type                                                                                                   | `ClusterIP`                               |
+| `mariadb.primary.service.ports.mysql`        | MariaDB Primary Kubernetes service port for MariaDB                                                                                       | `3306`                                    |
+| `mariadb.primary.service.clusterIP`          | MariaDB Primary Kubernetes service clusterIP IP                                                                                           | `None`                                    |
+| `mariadb.secondary.configuration`            | MariaDB Secondary configuration to be injected as ConfigMap                                                                               | `""`                                      |
+| `mariadb.secondary.name`                     | Name of the secondary database (eg secondary, slave, ...)                                                                                 | `secondary`                               |
+| `mariadb.secondary.persistence.size`         | MariaDB primary persistent volume size                                                                                                    | `1Gi`                                   |
+| `mariadb.secondary.persistence.storageClass` | MariaDB primary persistent volume storage Class                                                                                           | `""`                                      |
+| `mariadb.secondary.replicaCount`             | Number of MariaDB secondary replicas                                                                                                      | `1`                                       |
+| `mariadb.secondary.service.type`             | MariaDB secondary Kubernetes service type                                                                                                 | `ClusterIP`                               |
+| `mariadb.secondary.service.ports.mysql`      | MariaDB secondary Kubernetes service port for MariaDB                                                                                     | `3306`                                    |
+| `mariadb.secondary.service.clusterIP`        | MariaDB secondary Kubernetes service clusterIP IP                                                                                         | `None`                                    |
+| `serviceAccount.create`                      | Specifies whether a service account should be created                                                                                     | `true`                                    |
+| `serviceAccount.annotations`                 | Annotations to add to the service account                                                                                                 | `{}`                                      |
+| `serviceAccount.name`                        | The name of the service account to use.                                                                                                   | `baremetal-operator-controller-manager`   |
+| `nodeSelector`                               | nodeSelector for metal3 Pods                                                                                                              | `{}`                                      |
+| `tolerations`                                | tolerations for metal3 Pods                                                                                                               | `[]`                                      |
+| `affinity`                                   | affinity for metal3 Pods                                                                                                                  | `{}`                                      |
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
 
-## License
-For open source projects, say how it is licensed.
+#### Chart parameters auto-generation
+The chart parameters table above has been generated with [bitnami-labs readme generator for helm](https://github.com/bitnami-labs/readme-generator-for-helm).
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## CD pipeline and Helm repository channels
+A CD pipeline is configured to automatically package the helm chart and publish it to the Gitlab hosted helm repository, you can find it in the left menu under `Packages and registries`->`Package Registry`.
+
+The helm repository is structured into two channels:
+1. `stable`: contains the helm charts built from the `main` branch at every new commit;
+2. `devel`: contains the helm charts built from branches different from `main` at every new commit.
+
+```bash
+# Command to add the helm repo from the stable channel
+helm repo add --username <username> --password <access_token> sylva-metal3 https://gitlab.com/api/v4/projects/43292746/packages/helm/stable
+
+# Command to add the helm repo from the devel channel
+helm repo add --username <username> --password <access_token> sylva-metal3-devel https://gitlab.com/api/v4/projects/43292746/packages/helm/devel
+```
+
+In order to use it properly at every change to the chart the field `version` into the [Chart.yaml file](Chart.yaml) should be incremented.
+
+Use the `helm repo update` command to sync your local helm client to the latest charts built.
