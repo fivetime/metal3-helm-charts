@@ -3,7 +3,8 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
-  creationTimestamp: null
+  labels:
+    clusterctl.cluster.x-k8s.io: ""
   name: hostfirmwaresettings.metal3.io
 spec:
   group: metal3.io
