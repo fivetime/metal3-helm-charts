@@ -36,7 +36,8 @@ images:
     ## @param images.ironic.tag ironic image tag
     ## Overrides the image tag whose default is the chart appVersion.
     ##
-    tag: "capm3-v1.2.0"
+    ## At least version capm3-v1.3.0 due to the upstream change
+    tag: "capm3-v1.3.0"
   ironicIPADownloader:
     ## @param images.ironicIPADownloader.repository ironic-ipa-downloader image repository
     ## [IPA DIB image] e.g. quay.io/metal3-io/ironic-ipa-downloader

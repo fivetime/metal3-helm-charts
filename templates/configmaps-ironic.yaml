@@ -36,16 +36,10 @@ metadata:
 ---
 apiVersion: v1
 data:
-  configure-ironic.sh: |
-    {{ .Files.Get "ironic-scripts/configure-ironic.sh" | nindent 4 }}
   ironic-inspector.conf.j2: |
     {{ .Files.Get "ironic-scripts/ironic-inspector.conf.j2" | nindent 4 }}
   ironic.conf.j2: |
     {{ .Files.Get "ironic-scripts/ironic.conf.j2" | nindent 4 }}
-  runhttpd: |
-    {{ .Files.Get "ironic-scripts/runhttpd" | nindent 4 }}
-  runironic-inspector: |
-    {{ .Files.Get "ironic-scripts/runironic-inspector" | nindent 4 }}
 kind: ConfigMap
 metadata:
   name: ironic-code-custom
