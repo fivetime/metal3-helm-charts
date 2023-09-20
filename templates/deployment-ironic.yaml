@@ -66,9 +66,6 @@ spec:
         volumeMounts:
         - mountPath: /shared
           name: ironic-data-volume
-        - mountPath: /bin/configure-ironic.sh
-          name: ironic-code-custom
-          subPath: configure-ironic.sh
         - mountPath: /etc/ironic/ironic.conf.j2
           name: ironic-code-custom
           subPath: ironic.conf.j2
@@ -135,12 +132,6 @@ spec:
           successThreshold: 1
           timeoutSeconds: 10
         volumeMounts:
-        - mountPath: /bin/configure-ironic.sh
-          name: ironic-code-custom
-          subPath: configure-ironic.sh
-        - mountPath: /bin/runironic-inspector
-          name: ironic-code-custom
-          subPath: runironic-inspector
         - mountPath: /etc/ironic/ironic.conf.j2
           name: ironic-code-custom
           subPath: ironic.conf.j2
@@ -197,9 +188,6 @@ spec:
         volumeMounts:
         - mountPath: /shared
           name: ironic-data-volume
-        - mountPath: /bin/runhttpd
-          name: ironic-code-custom
-          subPath: runhttpd
         {{- if .Values.auth.tlsEnabled }}
         - name: cert-ironic
           mountPath: "/certs/ironic"
