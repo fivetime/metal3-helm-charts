@@ -95,6 +95,9 @@ ironicIPADownloaderBaseURI: ""
 ##
 ironicIPAExtraHardwareCollectorEnabled: false
 
+## @param ironicExtraNetworks list of multus networks-attachement-definitions to add to ironic pod (will be passed to 'k8s.v1.cni.cncf.io/networks' annotation)
+# ironicExtraNetworks: default/provisioning,default/management
+
 # imagePullSecrets: []
 # nameOverride: ""
 # fullnameOverride: ""

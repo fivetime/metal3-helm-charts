@@ -16,6 +16,10 @@ spec:
     metadata:
       labels:
         name: ironic
+      {{- if .Values.ironicExtraNetworks }}
+      annotations:
+        k8s.v1.cni.cncf.io/networks: '{{ .Values.ironicExtraNetworks }}'
+      {{- end }}
     spec:
       containers:
       - args:
