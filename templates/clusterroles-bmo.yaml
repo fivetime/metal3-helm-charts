@@ -39,6 +39,12 @@ rules:
 - apiGroups:
   - metal3.io
   resources:
+  - baremetalhosts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - metal3.io
+  resources:
   - baremetalhosts/status
   verbs:
   - get

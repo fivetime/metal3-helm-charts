@@ -24,7 +24,7 @@ images:
     ## @param images.baremetalOperator.tag baremetal-operator image tag
     ## Overrides the image tag whose default is the chart appVersion.
     ##
-    tag: "v0.1.1"
+    tag: "v0.4.0"
   ironic:
     ## @param images.ironic.repository ironic image repository
     ## e.g. quay.io/metal3-io/ironic
