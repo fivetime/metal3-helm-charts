@@ -92,6 +92,14 @@ spec:
           mountPath: "/certs/ca/ironic-inspector"
           readOnly: true
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          runAsUser: 997 # ironic
+          runAsGroup: 994 # ironic
       - command:
         - /bin/sh
         - /bin/runironic-inspector
@@ -158,6 +166,14 @@ spec:
           mountPath: "/certs/ca/ironic-inspector"
           readOnly: true
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          runAsUser: 996 # ironic-inspector
+          runAsGroup: 993 # ironicinspector
       - command:
         - /bin/sh
         - /bin/runhttpd
@@ -206,6 +222,14 @@ spec:
           mountPath: "/certs/ca/ironic-inspector"
           readOnly: true
         {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          runAsUser: 997 # ironic
+          runAsGroup: 994 # ironic
       hostNetwork: false
       initContainers:
       - command:
@@ -221,6 +245,14 @@ spec:
         volumeMounts:
         - mountPath: /shared
           name: ironic-data-volume
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          runAsUser: 997 # ironic
+          runAsGroup: 994 # ironic
       volumes:
       - name: ironic-data-volume
         persistentVolumeClaim:
@@ -250,6 +282,9 @@ spec:
         secret:
           secretName: ironic-inspector-cert
       {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 994
     {{- with .Values.nodeSelector }}
     nodeSelector:
       {{- toYaml . | nindent 8 }}
