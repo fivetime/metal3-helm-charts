@@ -169,7 +169,8 @@ By default the chart deploys the `DIB ironic-python-agent images`, if you want t
 | `nodeSelector`                               | nodeSelector for metal3 Pods                                                                                                              | `{}`                                      |
 | `tolerations`                                | tolerations for metal3 Pods                                                                                                               | `[]`                                      |
 | `affinity`                                   | affinity for metal3 Pods                                                                                                                  | `{}`                                      |
-
+| `ironicPythonAgentDebug.rootPwd`             | Defines the root password in the IPA ramdisk. See debug chapter bellow for more details                       | `""`                                      |
+| `ironicPythonAgentDebug.sshKey`              | Defines debug the public ssh Key injected in IPA ramdisk, to allow to remotely connect to IPA. See debug chapter bellow for more details      | `""`                                      |
 
 #### Chart parameters auto-generation
 The chart parameters table above has been generated with [bitnami-labs readme generator for helm](https://github.com/bitnami-labs/readme-generator-for-helm).
@@ -192,3 +193,11 @@ helm repo add --username <username> --password <access_token> sylva-metal3-devel
 In order to use it properly at every change to the chart the field `version` into the [Chart.yaml file](Chart.yaml) should be incremented.
 
 Use the `helm repo update` command to sync your local helm client to the latest charts built.
+
+## Debug features for IPA ramdisk
+For debugging session during inspection/provisioning phase, two features are available:
+* `rootPwd` which allows injecting an encrypted password for the `root` account of the IPA ramdisk.
+* `sshKey` which allows injecting a public SSH key to remotely connect to the IPA ramdisk with the `root` account.
+
+### Limitations
+The debug feature `rootPwd` only works for `legacy` baremetal node and does not work with `UEFI` baremetal node. A detailed analysis is available in this issue https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3/-/issues/8#note_1580818343

@@ -30,6 +30,12 @@ data:
   IPA_EXTRA_HW_COLLECTOR_ENABLED: {{ .Values.ironicIPAExtraHardwareCollectorEnabled | quote }}
   IRONIC_REVERSE_PROXY_SETUP: {{ .Values.auth.tlsEnabled | quote }}
   INSPECTOR_REVERSE_PROXY_SETUP: {{ .Values.auth.tlsEnabled | quote }}
+{{- if .Values.ironicPythonAgentDebug.sshKey }}
+  IRONIC_RAMDISK_SSH_KEY: {{ .Values.ironicPythonAgentDebug.sshKey | quote }}
+{{- end }}
+{{- if .Values.ironicPythonAgentDebug.rootPwd }}
+  IRONIC_RAMDISK_ROOTPWD: {{ .Values.ironicPythonAgentDebug.rootPwd | quote }}
+{{- end }}
 kind: ConfigMap
 metadata:
   name: ironic-bmo-configmap
