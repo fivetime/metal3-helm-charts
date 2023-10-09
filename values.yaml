@@ -364,3 +364,10 @@ tolerations: []
 ## @param affinity affinity for metal3 Pods
 ##
 affinity: {}
+
+## @param debug for metal3 Pods
+##
+ironicPythonAgentDebug:
+  rootPwd: ""
+  sshKey: ""
+
