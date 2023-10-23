@@ -240,6 +240,14 @@ mariadb:
       ##
       clusterIP: None
   
+    ## MariaDB Primary securityContext parameters
+    ##
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+      seccompProfile:
+        type: RuntimeDefault
+
   ## Mariadb Secondary parameters
   ##
   secondary:
@@ -309,6 +317,14 @@ mariadb:
         mysql: 3306
       ## @param mariadb.secondary.service.clusterIP MariaDB secondary Kubernetes service clusterIP IP
       clusterIP: None
+
+    ## MariaDB Secondary securityContext parameters
+    ##
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+      seccompProfile:
+        type: RuntimeDefault
 
 ## Configuration of the serviceAccount for the baremetal-operator-controller-manager
 ##
