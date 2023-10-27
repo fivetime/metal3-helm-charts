@@ -25,5 +25,5 @@ appVersion: "capm3-v1.2.0"
 
 dependencies:
   - name: mariadb
-    version: 11.0.14
+    version: 14.1.0
     repository: https://charts.bitnami.com/bitnami
