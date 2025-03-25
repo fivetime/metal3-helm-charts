@@ -1,6 +1,8 @@
 apiVersion: v2
 name: metal3
 description: A Helm chart for deploying metal3 in L3-Virtual Media configuration
+home: https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3
+
 
 # A chart can be either an 'application' or a 'library' chart.
 #
