@@ -19,23 +19,38 @@ jobs:
         git config --global user.name 'GitHub Actions'
         git config --global user.email 'actions@github.com'
     
-    - name: Add GitLab Remote
-      run: |
-        git remote add gitlab https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3.git
-        
     - name: Fetch from GitLab
       run: |
-        git fetch gitlab
-        
+        # 直接通过HTTPS获取最新的代码，无需添加远程仓库
+        git fetch https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3.git main
+           
     - name: Merge Changes
       run: |
-        git checkout main
-        git merge gitlab/main -m "Merge updates from GitLab" || {
-          echo "Merge conflict occurred. Aborting merge."
-          git merge --abort
-          exit 1
+        # 尝试合并远程分支
+        git merge FETCH_HEAD -m "Merge updates from GitLab" || {
+          echo "Merge conflict occurred or nothing to merge. Checking..."
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Merge conflict detected. Aborting merge."
+            git merge --abort
+            exit 1
+          else
+            echo "No changes to merge or other error."
+            # 如果没有冲突，可能只是没有更改，不需要退出错误
+          fi
         }
         
+    - name: Check for changes
+      id: check_changes
+      run: |
+        if git diff --quiet HEAD origin/main; then
+          echo "No changes to push"
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+        fi
+        
     - name: Push Changes
+      if: steps.check_changes.outputs.has_changes == 'true'
       run: |
         git push origin main
