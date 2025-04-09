@@ -1,0 +1,41 @@
+name: Sync from GitLab
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天凌晨运行一次
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+    
+    - name: Add GitLab Remote
+      run: |
+        git remote add gitlab https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3.git
+        
+    - name: Fetch from GitLab
+      run: |
+        git fetch gitlab
+        
+    - name: Merge Changes
+      run: |
+        git checkout main
+        git merge gitlab/main -m "Merge updates from GitLab" || {
+          echo "Merge conflict occurred. Aborting merge."
+          git merge --abort
+          exit 1
+        }
+        
+    - name: Push Changes
+      run: |
+        git push origin main
