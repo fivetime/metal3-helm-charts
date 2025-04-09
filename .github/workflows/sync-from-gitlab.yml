@@ -3,7 +3,7 @@ name: Sync from GitLab
 on:
   schedule:
     - cron: '0 0 * * *'  # 每天凌晨运行一次
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:     # 允许手动触发
 
 jobs:
   sync:
@@ -21,7 +21,6 @@ jobs:
     
     - name: Fetch from GitLab
       run: |
-        # 直接通过HTTPS获取最新的代码，无需添加远程仓库
         git fetch https://gitlab.com/sylva-projects/sylva-elements/helm-charts/metal3.git main
            
     - name: Merge Changes
